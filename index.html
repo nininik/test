@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>공영수영장 찾기</title>
+
+  <!--
+    ✅ API 키 설정
+    1) NAVER_CLIENT_ID  → Naver Cloud Platform (Maps API + Geocoder 서브모듈)
+    2) GOOGLE_API_KEY   → Google Cloud Console (Maps JS API + Places API)
+  -->
+  <script>
+    const NAVER_CLIENT_ID = 'tg6az681o1';
+    const GOOGLE_API_KEY  = 'YOUR_GOOGLE_MAPS_API_KEY';
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ═══ Reset ═══ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --header-h: 48px;
+      --sidebar-w: 390px;
+      --blue:      #1a56db;
+      --blue-light:#eff6ff;
+      --navy:      #1a2744;
+      --grey-50:   #f8fafc;
+      --grey-100:  #f1f5f9;
+      --grey-200:  #e2e8f0;
+      --grey-400:  #94a3b8;
+      --grey-600:  #475569;
+      --grey-800:  #1e293b;
+      --white:     #ffffff;
+      --font:      'Noto Sans KR', sans-serif;
+      --radius:    8px;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+    }
+
+    html, body { height: 100%; overflow: hidden; font-family: var(--font); }
+    body { display: flex; flex-direction: column; background: var(--grey-100); }
+
+    /* ═══ Header ═══ */
+    header {
+      height: var(--header-h);
+      background: var(--navy);
+      display: flex;
+      align-items: center;
+      padding: 0 18px;
+      gap: 10px;
+      flex-shrink: 0;
+      z-index: 10;
+    }
+    .header-logo  { font-size: 20px; }
+    .header-title { font-size: 15px; font-weight: 700; color: #fff; letter-spacing: -0.3px; }
+    .header-count { font-size: 12px; color: #94a3b8; margin-left: 2px; }
+
+    /* ═══ Main Layout ═══ */
+    .main-layout { flex: 1; display: flex; overflow: hidden; }
+
+    /* ═══ Sidebar ═══ */
+    .sidebar {
+      width: var(--sidebar-w);
+      min-width: var(--sidebar-w);
+      background: var(--white);
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--grey-200);
+      overflow: hidden;
+      z-index: 5;
+    }
+
+    /* ─ Search Area ─ */
+    .search-area {
+      padding: 12px 14px 10px;
+      border-bottom: 1px solid var(--grey-200);
+    }
+    .search-row { display: flex; gap: 8px; margin-bottom: 10px; }
+    #search-input {
+      flex: 1;
+      height: 40px;
+      padding: 0 12px;
+      border: 1.5px solid var(--grey-200);
+      border-radius: var(--radius);
+      font-family: var(--font);
+      font-size: 14px;
+      color: var(--grey-800);
+      outline: none;
+      transition: border-color .2s;
+    }
+    #search-input:focus { border-color: var(--blue); }
+    #search-input::placeholder { color: var(--grey-400); }
+    .search-btn {
+      height: 40px; padding: 0 18px;
+      background: var(--blue); color: #fff;
+      border: none; border-radius: var(--radius);
+      font-family: var(--font); font-size: 14px; font-weight: 600;
+      cursor: pointer; transition: background .2s; white-space: nowrap;
+    }
+    .search-btn:hover { background: #1741b0; }
+
+    /* ─ Chips ─ */
+    .province-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+    .type-chips     { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip {
+      padding: 4px 12px;
+      border-radius: 50px;
+      border: 1.5px solid var(--grey-200);
+      background: var(--white);
+      color: var(--grey-600);
+      font-family: var(--font); font-size: 12px; font-weight: 500;
+      cursor: pointer; transition: all .18s; white-space: nowrap;
+    }
+    .chip:hover { border-color: var(--blue); color: var(--blue); }
+    .chip.active { background: var(--blue); border-color: var(--blue); color: #fff; }
+
+    /* ─ Results Count ─ */
+    .results-count { padding: 10px 14px 6px; font-size: 13px; color: var(--grey-600); }
+    .results-count strong { color: var(--grey-800); }
+
+    /* ─ Cards List ─ */
+    .cards-list { flex: 1; overflow-y: auto; padding: 0 10px 16px; }
+    .cards-list::-webkit-scrollbar { width: 5px; }
+    .cards-list::-webkit-scrollbar-thumb { background: var(--grey-200); border-radius: 4px; }
+
+    /* ─ Pool Card ─ */
+    .pool-card {
+      background: var(--white);
+      border: 1.5px solid var(--grey-200);
+      border-radius: var(--radius);
+      padding: 14px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .pool-card:hover { border-color: #93c5fd; box-shadow: var(--shadow-sm); }
+    .pool-card.active {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 2px rgba(26,86,219,0.15);
+    }
+
+    .card-top {
+      display: flex; align-items: flex-start;
+      justify-content: space-between; gap: 8px;
+      margin-bottom: 4px;
+    }
+    .card-name   { font-size: 14px; font-weight: 700; color: var(--grey-800); line-height: 1.4; }
+    .card-region { font-size: 11px; color: var(--grey-400); white-space: nowrap; padding-top: 2px; }
+    .card-address { font-size: 12px; color: var(--grey-600); margin-bottom: 7px; }
+    .card-badges { display: flex; flex-wrap: wrap; gap: 5px; }
+
+    .badge { padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; }
+    .badge-indoor  { background: #e0f2fe; color: #0369a1; }
+    .badge-outdoor { background: #fef9c3; color: #854d0e; }
+    .badge-size    { background: #f3f4f6; color: var(--grey-600); border: 1px solid var(--grey-200); }
+
+    /* ─ Expanded detail ─ */
+    .card-detail { display: none; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--grey-100); }
+    .pool-card.active .card-detail { display: block; }
+
+    .detail-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 8px 16px; margin-bottom: 12px;
+    }
+    .d-label { font-size: 11px; color: var(--grey-400); margin-bottom: 2px; }
+    .d-value { font-size: 13px; font-weight: 600; color: var(--grey-800); }
+
+    .card-actions { display: flex; gap: 8px; }
+    .btn-action {
+      flex: 1; height: 34px;
+      border: none; border-radius: 6px;
+      font-family: var(--font); font-size: 12px; font-weight: 600;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 4px;
+      transition: filter .18s;
+    }
+    .btn-action:hover { filter: brightness(1.1); }
+    .btn-locate   { background: #16a34a; color: #fff; }
+    .btn-phone    { background: #ef4444; color: #fff; }
+    .btn-homepage { background: #374151; color: #fff; }
+
+    /* ─ Empty State ─ */
+    .empty-state { text-align: center; padding: 48px 20px; color: var(--grey-400); }
+    .empty-state .icon { font-size: 40px; margin-bottom: 12px; }
+    .empty-state p { font-size: 13px; line-height: 1.6; }
+
+    /* ═══ Map Panel ═══ */
+    .map-panel { flex: 1; position: relative; }
+    #naver-map { width: 100%; height: 100%; }
+
+    .map-placeholder {
+      width: 100%; height: 100%;
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: 12px;
+      background: #e5e7eb; text-align: center; padding: 24px;
+    }
+    .map-placeholder .icon { font-size: 48px; opacity: .45; }
+    .map-placeholder h3 { color: var(--grey-600); font-size: 15px; }
+    .map-placeholder p  { color: var(--grey-400); font-size: 13px; line-height: 1.6; }
+    .map-placeholder code {
+      background:#fff; border:1px solid var(--grey-200);
+      padding:2px 8px; border-radius:4px; font-size:12px; color:var(--blue);
+    }
+
+    /* Naver InfoWindow content */
+    .naver-iw {
+      background:#fff; border:1px solid #ddd; border-radius:8px;
+      padding:12px 14px; box-shadow:0 4px 16px rgba(0,0,0,.15);
+      font-family:'Noto Sans KR',sans-serif;
+      min-width:180px; max-width:240px;
+    }
+    .naver-iw .iw-name { font-size:13px; font-weight:700; color:#1e293b; margin-bottom:4px; }
+    .naver-iw .iw-addr { font-size:11px; color:#94a3b8; margin-bottom:6px; }
+    .naver-iw .iw-badges { display:flex; gap:5px; flex-wrap:wrap; }
+  </style>
+</head>
+<body>
+
+<!-- ═══ Header ═══ -->
+<header>
+  <span class="header-logo">🏊</span>
+  <span class="header-title">공영수영장 찾기</span>
+  <span class="header-count" id="total-count">전국 0개 시설</span>
+</header>
+
+<!-- ═══ Main ═══ -->
+<div class="main-layout">
+
+  <!-- ─ Sidebar ─ -->
+  <div class="sidebar">
+
+    <div class="search-area">
+      <!-- Search row -->
+      <div class="search-row">
+        <input type="text" id="search-input"
+          placeholder="지역 또는 시설명을 검색하세요"
+          autocomplete="off" />
+        <button class="search-btn" id="search-btn">검색</button>
+      </div>
+
+      <!-- Province chips -->
+      <div class="province-chips" id="province-chips"></div>
+
+      <!-- Type chips -->
+      <div class="type-chips" id="type-chips">
+        <span class="chip active" data-type="전체">전체</span>
+        <span class="chip" data-type="실내">실내</span>
+        <span class="chip" data-type="야외">야외</span>
+      </div>
+    </div>
+
+    <div class="results-count" id="results-count">총 <strong>0</strong>개 시설</div>
+
+    <div class="cards-list" id="cards-list">
+      <div class="empty-state">
+        <div class="icon">🌊</div>
+        <p>데이터를 불러오는 중입니다...</p>
+      </div>
+    </div>
+
+  </div><!-- /sidebar -->
+
+  <!-- ─ Map ─ -->
+  <div class="map-panel">
+    <div id="naver-map"></div>
+  </div>
+
+</div><!-- /main-layout -->
+
+<!-- ═══════════════ SCRIPT ═══════════════ -->
+<script>
+/* ─── Constants ─── */
+const DATA_URL = 'https://nininik.github.io/test/data/data.json';
+
+const PROVINCE_SHORT = {
+  '서울특별시':'서울','경기도':'경기','부산광역시':'부산','대구광역시':'대구',
+  '인천광역시':'인천','광주광역시':'광주','대전광역시':'대전','울산광역시':'울산',
+  '세종특별자치시':'세종','강원특별자치도':'강원','충청북도':'충북','충청남도':'충남',
+  '전북특별자치도':'전북','전라남도':'전남','경상북도':'경북','경상남도':'경남',
+  '제주특별자치도':'제주',
+};
+const PROVINCE_ORDER = [
+  '서울특별시','경기도','부산광역시','대구광역시','인천광역시',
+  '광주광역시','대전광역시','강원특별자치도','제주특별자치도'
+];
+
+/* ─── State ─── */
+let allPools      = [];
+let filteredPools = [];
+let activeIdx     = null;
+let currentProvince = '전체';
+let currentType     = '전체';
+let currentQuery    = '';
+
+/* ─── Map state ─── */
+let naverMap     = null;
+let naverMarkers = [];   // naver.maps.Marker[]
+let naverIW      = null;
+let naverReady   = false;
+const geocodeCache = {};
+let markerLatLngs  = []; // parallel to filteredPools
+
+/* ─── Google ─── */
+let googlePlacesService = null;
+
+/* ════════════════════════════════
+   1. LOAD DATA
+════════════════════════════════ */
+async function loadData() {
+  try {
+    const res = await fetch(DATA_URL);
+    allPools = await res.json();
+    document.getElementById('total-count').textContent = `전국 ${allPools.length}개 시설`;
+    buildProvinceChips();
+    applyFilters();
+    initNaverMap();
+  } catch(e) {
+    document.getElementById('cards-list').innerHTML = `
+      <div class="empty-state">
+        <div class="icon">⚠️</div>
+        <p>데이터를 불러오지 못했습니다.<br>${e.message}</p>
+      </div>`;
+  }
+}
+
+/* ════════════════════════════════
+   2. PROVINCE CHIPS
+════════════════════════════════ */
+function buildProvinceChips() {
+  const available = new Set(allPools.map(p => p.province).filter(Boolean));
+  const ordered   = [...new Set([...PROVINCE_ORDER.filter(p => available.has(p)), ...available])];
+
+  const container = document.getElementById('province-chips');
+  ordered.forEach(prov => {
+    const chip = document.createElement('span');
+    chip.className = 'chip';
+    chip.dataset.province = prov;
+    chip.textContent = PROVINCE_SHORT[prov] || prov;
+    chip.title = prov;
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('#province-chips .chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      currentProvince = prov;
+      applyFilters();
+    });
+    container.appendChild(chip);
+  });
+}
+
+/* ════════════════════════════════
+   3. FILTER & RENDER
+════════════════════════════════ */
+function isOutdoor(p) { return (p.name||'').includes('야외'); }
+
+function applyFilters() {
+  const q = currentQuery.toLowerCase().trim();
+
+  filteredPools = allPools.filter(p => {
+    if (currentProvince !== '전체' && p.province !== currentProvince) return false;
+    if (currentType === '실내' &&  isOutdoor(p)) return false;
+    if (currentType === '야외' && !isOutdoor(p)) return false;
+    if (!q) return true;
+    return (p.name||'').toLowerCase().includes(q)
+        || (p.province||'').toLowerCase().includes(q)
+        || (p.district||'').toLowerCase().includes(q)
+        || (p.address||'').toLowerCase().includes(q);
+  });
+
+  activeIdx = null;
+  renderCards();
+
+  document.getElementById('results-count').innerHTML =
+    `총 <strong>${filteredPools.length.toLocaleString()}</strong>개 시설`;
+
+  updateMapMarkers();
+}
+
+function renderCards() {
+  const list = document.getElementById('cards-list');
+  if (!filteredPools.length) {
+    list.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">🔍</div>
+        <p>검색 결과가 없습니다.<br>다른 검색어나 지역을 시도해 보세요.</p>
+      </div>`;
+    return;
+  }
+  list.innerHTML = '';
+  filteredPools.forEach((pool, i) => list.appendChild(buildCard(pool, i)));
+}
+
+function buildCard(pool, idx) {
+  const card = document.createElement('div');
+  card.className = 'pool-card' + (idx === activeIdx ? ' active' : '');
+  card.dataset.idx = idx;
+
+  const outdoor  = isOutdoor(pool);
+  const province = (pool.province||'').replace('특별자치도','').replace('특별시','').replace('광역시','').replace('특별자치시','');
+  const district = (pool.district||'').trim();
+  const regionStr = `${province} ${district}`.trim();
+  const addrStr   = pool.address || '';
+  const typeBadge = outdoor
+    ? `<span class="badge badge-outdoor">야외</span>`
+    : `<span class="badge badge-indoor">실내</span>`;
+
+  card.innerHTML = `
+    <div class="card-top">
+      <div class="card-name">${pool.name}</div>
+      <div class="card-region">${regionStr}</div>
+    </div>
+    ${addrStr ? `<div class="card-address">${addrStr}</div>` : `<div class="card-address">${district}</div>`}
+    <div class="card-badges">
+      ${typeBadge}
+      <span class="badge badge-size">정보없음</span>
+    </div>
+    <div class="card-detail">
+      <div class="detail-grid">
+        <div>
+          <div class="d-label">레인</div>
+          <div class="d-value">정보없음</div>
+        </div>
+        <div>
+          <div class="d-label">규모</div>
+          <div class="d-value">정보없음</div>
+        </div>
+        <div>
+          <div class="d-label">준공연도</div>
+          <div class="d-value">정보없음</div>
+        </div>
+        <div>
+          <div class="d-label">실내외</div>
+          <div class="d-value">${outdoor ? '야외' : '실내'}</div>
+        </div>
+      </div>
+      <div class="card-actions">
+        <button class="btn-action btn-locate">📍 위치 보기</button>
+        <button class="btn-action btn-phone">📞 전화</button>
+        <button class="btn-action btn-homepage">🌐 홈페이지</button>
+      </div>
+    </div>`;
+
+  /* Click → toggle active */
+  card.addEventListener('click', (e) => {
+    if (e.target.closest('.btn-action')) return;
+    toggleActive(idx);
+  });
+
+  card.querySelector('.btn-locate').addEventListener('click', (e) => {
+    e.stopPropagation();
+    setActive(idx);
+    focusMarker(idx);
+  });
+  card.querySelector('.btn-phone').addEventListener('click', (e) => {
+    e.stopPropagation();
+    fetchPhoneAndCall(pool);
+  });
+  card.querySelector('.btn-homepage').addEventListener('click', (e) => {
+    e.stopPropagation();
+    fetchHomepage(pool);
+  });
+
+  return card;
+}
+
+/* ─── Active card management ─── */
+function toggleActive(idx) {
+  if (activeIdx === idx) {
+    clearActive();
+  } else {
+    setActive(idx);
+    focusMarker(idx);
+  }
+}
+
+function setActive(idx) {
+  clearActive();
+  activeIdx = idx;
+  const card = document.querySelector(`.pool-card[data-idx="${idx}"]`);
+  if (card) {
+    card.classList.add('active');
+    card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+
+function clearActive() {
+  if (activeIdx !== null) {
+    const prev = document.querySelector(`.pool-card[data-idx="${activeIdx}"]`);
+    if (prev) prev.classList.remove('active');
+    activeIdx = null;
+  }
+}
+
+/* ════════════════════════════════
+   4. NAVER MAP
+════════════════════════════════ */
+function initNaverMap() {
+  if (NAVER_CLIENT_ID === 'YOUR_NAVER_CLIENT_ID') {
+    showMapPlaceholder();
+    return;
+  }
+  if (document.getElementById('_naver_sc')) return;
+  const s = document.createElement('script');
+  s.id = '_naver_sc';
+  s.src = `https://openapi.map.naver.com/openapi/v3/maps.js?ncpClientId=${NAVER_CLIENT_ID}&submodules=geocoder`;
+  s.onload = () => {
+    const t = setInterval(() => {
+      if (window.naver?.maps) {
+        clearInterval(t);
+        naverReady = true;
+        createMap();
+      }
+    }, 100);
+  };
+  s.onerror = showMapPlaceholder;
+  document.head.appendChild(s);
+}
+
+function showMapPlaceholder() {
+  document.getElementById('naver-map').innerHTML = `
+    <div class="map-placeholder">
+      <div class="icon">🗺️</div>
+      <h3>Naver 지도 API 키 필요</h3>
+      <p>파일 상단 <code>NAVER_CLIENT_ID</code>에<br>실제 API 키를 입력하면 지도가 표시됩니다.</p>
+    </div>`;
+}
+
+function createMap() {
+  naverMap = new naver.maps.Map('naver-map', {
+    center: new naver.maps.LatLng(36.5, 127.8),
+    zoom: 7,
+  });
+  naverIW = new naver.maps.InfoWindow({ borderWidth: 0, backgroundColor: 'transparent' });
+  updateMapMarkers();
+}
+
+/* ─── Geocode (with cache) ─── */
+function geocodePool(pool) {
+  const key = `${pool.name}|${pool.district||''}|${pool.province||''}`;
+  if (geocodeCache[key] !== undefined) return Promise.resolve(geocodeCache[key]);
+
+  return new Promise(resolve => {
+    const q = `${pool.name} ${(pool.district||'').trim()} ${pool.province||''}`;
+    naver.maps.Service.geocode({ query: q }, (status, res) => {
+      if (status === naver.maps.Service.Status.OK && res.v2.addresses.length) {
+        const a = res.v2.addresses[0];
+        const ll = new naver.maps.LatLng(parseFloat(a.y), parseFloat(a.x));
+        geocodeCache[key] = ll;
+        resolve(ll);
+      } else {
+        geocodeCache[key] = null;
+        resolve(null);
+      }
+    });
+  });
+}
+
+/* ─── Place markers for current filtered list ─── */
+function clearMarkers() {
+  naverMarkers.forEach(m => { if (m) m.setMap(null); });
+  naverMarkers = [];
+  markerLatLngs = [];
+}
+
+const MAX_MARKERS = 50;
+
+async function updateMapMarkers() {
+  if (!naverReady || !naverMap) return;
+  if (naverIW) naverIW.close();
+  clearMarkers();
+
+  const pools = filteredPools.slice(0, MAX_MARKERS);
+  markerLatLngs = new Array(pools.length).fill(null);
+
+  for (let i = 0; i < pools.length; i++) {
+    const latlng = await geocodePool(pools[i]);
+    markerLatLngs[i] = latlng;
+    if (!latlng) continue;
+    naverMarkers[i] = createMarker(pools[i], i, latlng);
+  }
+
+  // Fit bounds
+  const validLL = markerLatLngs.filter(Boolean);
+  if (validLL.length === 1) {
+    naverMap.setCenter(validLL[0]);
+    naverMap.setZoom(15);
+  } else if (validLL.length > 1) {
+    const bounds = new naver.maps.LatLngBounds();
+    validLL.forEach(l => bounds.extend(l));
+    naverMap.fitBounds(bounds, { top: 60, right: 60, bottom: 60, left: 60 });
+  }
+}
+
+function createMarker(pool, idx, latlng) {
+  const outdoor = isOutdoor(pool);
+  const bg      = outdoor ? '#d97706' : '#1a56db';
+  const label   = pool.name.length > 10 ? pool.name.slice(0,10) + '…' : pool.name;
+
+  const marker = new naver.maps.Marker({
+    position: latlng,
+    map: naverMap,
+    icon: {
+      content: `<div style="
+        background:${bg};color:#fff;
+        padding:5px 11px;border-radius:50px;
+        font-size:12px;font-family:'Noto Sans KR',sans-serif;font-weight:700;
+        white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.3);
+        border:2px solid #fff;cursor:pointer;
+      ">${label}</div>`,
+      anchor: new naver.maps.Point(0, 0),
+    },
+    zIndex: 100,
+  });
+
+  naver.maps.Event.addListener(marker, 'click', () => {
+    setActive(idx);
+    openInfoWindow(pool, latlng);
+    naverMap.setCenter(latlng);
+    naverMap.setZoom(16);
+  });
+
+  return marker;
+}
+
+function focusMarker(idx) {
+  if (!naverReady || !naverMap) return;
+  const pool = filteredPools[idx];
+  if (!pool) return;
+
+  const doFocus = (latlng) => {
+    if (!latlng) return;
+    naverMap.setCenter(latlng);
+    naverMap.setZoom(16);
+    openInfoWindow(pool, latlng);
+  };
+
+  if (markerLatLngs[idx]) {
+    doFocus(markerLatLngs[idx]);
+  } else {
+    geocodePool(pool).then(ll => {
+      markerLatLngs[idx] = ll;
+      if (ll && !naverMarkers[idx]) {
+        naverMarkers[idx] = createMarker(pool, idx, ll);
+      }
+      doFocus(ll);
+    });
+  }
+}
+
+function openInfoWindow(pool, latlng) {
+  const outdoor  = isOutdoor(pool);
+  const province = (pool.province||'').replace('特별자치도','').replace('특별자치도','').replace('특별시','').replace('광역시','');
+  const district = (pool.district||'').trim();
+  const addr     = pool.address || district;
+
+  const typeBadgeStyle = outdoor
+    ? 'background:#fef9c3;color:#854d0e'
+    : 'background:#e0f2fe;color:#0369a1';
+  const typeLabel = outdoor ? '야외' : '실내';
+
+  naverIW.setContent(`
+    <div class="naver-iw">
+      <div class="iw-name">${pool.name}</div>
+      <div class="iw-addr">${province} ${district}${addr && addr !== district ? ' · ' + addr : ''}</div>
+      <div class="iw-badges">
+        <span style="${typeBadgeStyle};padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700">${typeLabel}</span>
+        <span style="background:#f3f4f6;color:#475569;padding:2px 8px;border-radius:4px;font-size:10px;border:1px solid #e2e8f0">정보없음</span>
+      </div>
+    </div>`);
+  naverIW.open(naverMap, latlng);
+}
+
+/* ════════════════════════════════
+   5. GOOGLE PLACES (phone / url)
+════════════════════════════════ */
+function loadGoogleScript(cb) {
+  if (GOOGLE_API_KEY === 'YOUR_GOOGLE_MAPS_API_KEY') { cb(false); return; }
+  if (window.google?.maps) { cb(true); return; }
+  if (document.getElementById('_google_sc')) {
+    const t = setInterval(() => { if (window.google?.maps?.places) { clearInterval(t); cb(true); } }, 200);
+    return;
+  }
+  const s = document.createElement('script');
+  s.id = '_google_sc';
+  s.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_API_KEY}&libraries=places&language=ko`;
+  s.onload = () => {
+    const t = setInterval(() => {
+      if (window.google?.maps?.places) { clearInterval(t); cb(true); }
+    }, 100);
+  };
+  s.onerror = () => cb(false);
+  document.head.appendChild(s);
+}
+
+function ensurePlaces() {
+  if (!googlePlacesService) {
+    const d = document.createElement('div');
+    document.body.appendChild(d);
+    googlePlacesService = new google.maps.places.PlacesService(d);
+  }
+}
+
+function fetchPlaceDetails(pool, callback) {
+  loadGoogleScript(ok => {
+    if (!ok) { callback(null); return; }
+    ensurePlaces();
+    const q = `${pool.name} ${pool.province||''} ${(pool.district||'').trim()}`;
+    googlePlacesService.findPlaceFromQuery(
+      { query: q, fields: ['place_id'] },
+      (results, status) => {
+        if (status !== google.maps.places.PlacesServiceStatus.OK || !results?.[0]) { callback(null); return; }
+        googlePlacesService.getDetails(
+          { placeId: results[0].place_id, fields: ['formatted_phone_number','website','url'] },
+          (place, s2) => callback(s2 === google.maps.places.PlacesServiceStatus.OK ? place : null)
+        );
+      }
+    );
+  });
+}
+
+function fetchPhoneAndCall(pool) {
+  fetchPlaceDetails(pool, place => {
+    if (place?.formatted_phone_number) {
+      window.location.href = `tel:${place.formatted_phone_number}`;
+    } else {
+      window.open(`https://search.naver.com/search.naver?query=${encodeURIComponent(pool.name+' 전화번호')}`, '_blank');
+    }
+  });
+}
+
+function fetchHomepage(pool) {
+  fetchPlaceDetails(pool, place => {
+    const url = place?.website || place?.url;
+    if (url) window.open(url, '_blank');
+    else window.open(`https://search.naver.com/search.naver?query=${encodeURIComponent(pool.name+' 홈페이지')}`, '_blank');
+  });
+}
+
+/* ════════════════════════════════
+   6. EVENTS
+════════════════════════════════ */
+/* Search */
+document.getElementById('search-btn').addEventListener('click', () => {
+  currentQuery = document.getElementById('search-input').value;
+  applyFilters();
+});
+document.getElementById('search-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { currentQuery = e.target.value; applyFilters(); }
+});
+document.getElementById('search-input').addEventListener('input', e => {
+  currentQuery = e.target.value;
+  applyFilters();
+});
+
+/* Type chips */
+document.querySelectorAll('#type-chips .chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.querySelectorAll('#type-chips .chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    currentType = chip.dataset.type;
+    applyFilters();
+  });
+});
+
+/* ════════════════════════════════
+   INIT
+════════════════════════════════ */
+loadData();
+</script>
+</body>
+</html>
