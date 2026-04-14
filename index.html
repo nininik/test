@@ -124,19 +124,10 @@ var pools = {
 };
 
 function makeInfoContent(p) {
-  var fields = [
-    ['주소', p.address], ['수영장 길이', p.pool_length], ['레인 수', p.lane_count],
-    ['수심', p.depth], ['이용 요금', p.price], ['평일 시간', p.weekday_hours],
-    ['주말 시간', p.weekend_hours], ['어린이풀', p.kids_pool], ['휴무', p.holiday],
-    ['실내/외', p.indoor_outdoor], ['수질 유형', p.water_type], ['홈페이지', p.homepage]
-  ];
-  var rows = fields
-    .filter(function(f) { return !!f[1]; })
-    .map(function(f) {
-      return '<div class="iw-row"><span class="iw-key">' + f[0] + '</span>'
-           + '<span class="iw-val">' + f[1] + '</span></div>';
-    }).join('');
-  return '<div class="iw-wrap"><div class="iw-title">&#127946; ' + p.pool_name + '</div>' + rows + '</div>';
+  // 다른 정보 없이 수영장 이름만 담은 심플한 HTML 반환
+  return '<div class="iw-wrap" style="padding:10px; font-weight:bold; font-size:14px;">' 
+         + '🏊 ' + p.pool_name 
+         + '</div>';
 }
 
 /* 지도 초기화 */
