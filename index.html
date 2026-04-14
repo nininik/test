@@ -1,345 +1,225 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>종로구 수영장 지도</title>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif; background: #f5f5f5; }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no">
+  <title>종로구 수영장 지도</title>
 
-  .top-bar {
-    background: #fff;
-    border-bottom: 1px solid #e0e0e0;
-    padding: 14px 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    position: relative;
-    z-index: 10;
-  }
+  <!-- ✅ 네이버 지도 API v3 (최신: oapi 도메인 + ncpKeyId 파라미터) -->
+  <script type="text/javascript" src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=YOUR_tg6az681o1"></script>
 
-  .api-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .api-row label {
-    font-size: 13px;
-    color: #555;
-    white-space: nowrap;
-    font-weight: 500;
-  }
-  .api-row input {
-    flex: 1;
-    padding: 7px 12px;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    font-size: 13px;
-    outline: none;
-    transition: border 0.2s;
-  }
-  .api-row input:focus { border-color: #2E7CF6; }
-  .api-row button {
-    padding: 7px 18px;
-    background: #2E7CF6;
-    color: #fff;
-    border: none;
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: background 0.2s;
-  }
-  .api-row button:hover { background: #1a60d0; }
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; }
 
-  .btn-row {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
+    #top-bar {
+      display: flex;
+      gap: 10px;
+      padding: 12px 16px;
+      background: #fff;
+      border-bottom: 1px solid #e0e0e0;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+      position: relative;
+      z-index: 200;
+      flex-wrap: wrap;
+    }
 
-  .pool-btn {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    padding: 10px 18px;
-    border: 1.5px solid #ddd;
-    border-radius: 10px;
-    background: #fff;
-    cursor: pointer;
-    transition: all 0.2s;
-    text-align: left;
-    min-width: 180px;
-  }
-  .pool-btn:hover { border-color: #2E7CF6; background: #f0f6ff; }
-  .pool-btn.active { border-color: #2E7CF6; background: #2E7CF6; color: #fff; }
-  .pool-btn .btn-label {
-    font-size: 11px;
-    font-weight: 600;
-    opacity: 0.65;
-    margin-bottom: 2px;
-    letter-spacing: 0.04em;
-  }
-  .pool-btn.active .btn-label { opacity: 0.85; color: #fff; }
-  .pool-btn .btn-name {
-    font-size: 14px;
-    font-weight: 600;
-  }
-  .pool-btn .btn-addr {
-    font-size: 11px;
-    opacity: 0.6;
-    margin-top: 2px;
-  }
-  .pool-btn.active .btn-addr { opacity: 0.8; color: #fff; }
+    .pool-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      padding: 10px 16px;
+      border: 1.5px solid #d0d5dd;
+      border-radius: 12px;
+      background: #fff;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      min-width: 170px;
+      text-align: left;
+    }
+    .pool-btn:hover { border-color: #1EC800; background: #f3fff0; }
+    .pool-btn.active { border-color: #1EC800; background: #1EC800; }
+    .pool-btn .tag {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.08em; color: #888; margin-bottom: 3px;
+    }
+    .pool-btn.active .tag { color: rgba(255,255,255,0.8); }
+    .pool-btn .name { font-size: 13px; font-weight: 700; color: #1a1a1a; line-height: 1.3; }
+    .pool-btn.active .name { color: #fff; }
+    .pool-btn .addr { font-size: 11px; color: #888; margin-top: 2px; }
+    .pool-btn.active .addr { color: rgba(255,255,255,0.75); }
 
-  #map { width: 100%; height: calc(100vh - 140px); min-height: 400px; }
+    #map { width: 100%; height: calc(100vh - 80px); }
 
-  .info-overlay {
-    display: none;
-    position: absolute;
-    bottom: 24px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: #fff;
-    border-radius: 14px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-    padding: 16px 20px;
-    min-width: 280px;
-    max-width: 360px;
-    z-index: 100;
-    border: 1px solid #e5e9f0;
-  }
-  .info-overlay.show { display: block; }
-  .info-title { font-size: 15px; font-weight: 700; color: #1a1a2e; margin-bottom: 10px; }
-  .info-grid { display: grid; grid-template-columns: auto 1fr; gap: 5px 12px; font-size: 13px; }
-  .info-grid .k { color: #888; font-weight: 500; }
-  .info-grid .v { color: #222; }
-  .info-close {
-    position: absolute; top: 10px; right: 12px;
-    background: none; border: none; cursor: pointer;
-    font-size: 18px; color: #aaa; line-height: 1;
-  }
-  .info-close:hover { color: #444; }
-
-  .map-wrap { position: relative; }
-
-  .notice {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: calc(100vh - 140px);
-    min-height: 400px;
-    background: #fafafa;
-    color: #999;
-    font-size: 14px;
-    flex-direction: column;
-    gap: 8px;
-  }
-  .notice svg { opacity: 0.3; }
-</style>
+    .iw-wrap {
+      padding: 14px 16px 12px;
+      min-width: 230px;
+      max-width: 280px;
+      font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+    }
+    .iw-title {
+      font-size: 14px; font-weight: 700; color: #111;
+      margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #eee;
+    }
+    .iw-row { display: flex; gap: 8px; margin-bottom: 5px; font-size: 12px; line-height: 1.5; }
+    .iw-key { color: #888; min-width: 62px; flex-shrink: 0; }
+    .iw-val { color: #222; font-weight: 500; }
+  </style>
 </head>
 <body>
 
-<div class="top-bar">
-  <div class="api-row">
-    <label>네이버 지도 Client ID</label>
-    <input type="text" id="clientId" placeholder="발급받은 Client ID를 입력하세요" />
-    <button onclick="initMap()">지도 로드</button>
-  </div>
-  <div class="btn-row" id="btnRow">
-    <button class="pool-btn" onclick="selectPool('Gov_001')" id="btn-Gov_001">
-      <span class="btn-label">GOV_001</span>
-      <span class="btn-name">종로 올림픽기념국민생활관</span>
-      <span class="btn-addr">성균관로 91</span>
+  <div id="top-bar">
+    <button class="pool-btn" id="btn-Gov_001" onclick="focusPool('Gov_001')">
+      <span class="tag">GOV_001</span>
+      <span class="name">종로 올림픽기념국민생활관</span>
+      <span class="addr">성균관로 91</span>
     </button>
-    <button class="pool-btn" onclick="selectPool('Gov_002')" id="btn-Gov_002">
-      <span class="btn-label">GOV_002</span>
-      <span class="btn-name">종로구민회관</span>
-      <span class="btn-addr">지봉로5길 7-5</span>
+    <button class="pool-btn" id="btn-Gov_002" onclick="focusPool('Gov_002')">
+      <span class="tag">GOV_002</span>
+      <span class="name">종로구민회관</span>
+      <span class="addr">지봉로5길 7-5</span>
     </button>
-    <button class="pool-btn" onclick="selectPool('Gov_003')" id="btn-Gov_003">
-      <span class="btn-label">GOV_003</span>
-      <span class="btn-name">종로문화체육센터</span>
-      <span class="btn-addr">인왕산로1길 21</span>
+    <button class="pool-btn" id="btn-Gov_003" onclick="focusPool('Gov_003')">
+      <span class="tag">GOV_003</span>
+      <span class="name">종로문화체육센터</span>
+      <span class="addr">인왕산로1길 21</span>
     </button>
   </div>
-</div>
 
-<div class="map-wrap" id="mapWrap">
-  <div class="notice" id="notice">
-    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="1.5">
-      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
-      <circle cx="12" cy="9" r="2.5"/>
-    </svg>
-    <span>Client ID를 입력하고 <b>지도 로드</b>를 눌러주세요</span>
-  </div>
-  <div id="map" style="display:none;"></div>
-
-  <div class="info-overlay" id="infoOverlay">
-    <button class="info-close" onclick="closeInfo()">✕</button>
-    <div class="info-title" id="infoTitle"></div>
-    <div class="info-grid" id="infoGrid"></div>
-  </div>
-</div>
+  <div id="map"></div>
 
 <script>
-const pools = {
+var pools = {
   Gov_001: {
-    pool_name: "종로 올림픽기념국민생활관",
-    address: "서울 종로구 성균관로 91",
-    latitude: 37.590491,
-    longitude: 126.998824,
-    homepage: "www.ijongno.co.kr",
-    pool_length: "25m",
-    lane_count: "6개",
-    depth: "1.2~1.5m",
-    price: "성인 6,050원",
-    weekday_hours: "15:00~16:50",
-    weekend_hours: "토 15:00~16:50 / 일 10:00~14:50",
-    kids_pool: "있음",
-    holiday: "1, 3주 일요일",
-    indoor_outdoor: "실내",
-    water_type: "해수풀"
+    pool_name: '종로 올림픽기념국민생활관',
+    address: '서울 종로구 성균관로 91',
+    lat: 37.590491, lng: 126.998824,
+    pool_length: '25m', lane_count: '6개', depth: '1.2~1.5m',
+    price: '성인 6,050원',
+    weekday_hours: '15:00~16:50',
+    weekend_hours: '토 15:00~16:50 / 일 10:00~14:50',
+    kids_pool: '있음', holiday: '1, 3주 일요일',
+    indoor_outdoor: '실내', water_type: '해수풀', homepage: 'www.ijongno.co.kr'
   },
   Gov_002: {
-    pool_name: "종로구민회관",
-    address: "서울 종로구 지봉로5길 7-5",
-    latitude: 37.5734077,
-    longitude: 127.0143151,
-    pool_length: "25m",
-    lane_count: "6개",
-    depth: "1.2~1.5m",
-    price: "성인 6,050원",
-    weekday_hours: "08:00 / 13:00 / 18:00",
-    weekend_hours: "토 15:00~16:50 / 일 11:00~16:50",
-    kids_pool: "있음",
-    holiday: "1, 3주 일요일",
-    indoor_outdoor: "실내"
+    pool_name: '종로구민회관',
+    address: '서울 종로구 지봉로5길 7-5',
+    lat: 37.5734077, lng: 127.0143151,
+    pool_length: '25m', lane_count: '6개', depth: '1.2~1.5m',
+    price: '성인 6,050원',
+    weekday_hours: '08:00 / 13:00 / 18:00',
+    weekend_hours: '토 15:00~16:50 / 일 11:00~16:50',
+    kids_pool: '있음', holiday: '1, 3주 일요일', indoor_outdoor: '실내'
   },
   Gov_003: {
-    pool_name: "종로문화체육센터",
-    address: "서울 종로구 인왕산로1길 21",
-    latitude: 37.5744017,
-    longitude: 126.9646323,
-    homepage: "http://www.ijongno.co.kr/",
-    pool_length: "25m",
-    lane_count: "5개",
-    depth: "1.1~1.3m",
-    price: "성인 6,050원",
-    weekday_hours: "08:00 / 12:00 / 18:00",
-    weekend_hours: "토 15:00~16:50 / 일 10:00~14:50",
-    kids_pool: "있음",
-    holiday: "1, 3주 일요일",
-    indoor_outdoor: "실내"
+    pool_name: '종로문화체육센터',
+    address: '서울 종로구 인왕산로1길 21',
+    lat: 37.5744017, lng: 126.9646323,
+    pool_length: '25m', lane_count: '5개', depth: '1.1~1.3m',
+    price: '성인 6,050원',
+    weekday_hours: '08:00 / 12:00 / 18:00',
+    weekend_hours: '토 15:00~16:50 / 일 10:00~14:50',
+    kids_pool: '있음', holiday: '1, 3주 일요일',
+    indoor_outdoor: '실내', homepage: 'www.ijongno.co.kr'
   }
 };
 
-let map = null;
-let markers = {};
-let currentActive = null;
-
-function initMap() {
-  const clientId = document.getElementById('clientId').value.trim();
-  if (!clientId) { alert('Client ID를 입력해주세요.'); return; }
-
-  const existing = document.getElementById('naverScript');
-  if (existing) existing.remove();
-
-  const script = document.createElement('script');
-  script.id = 'naverScript';
-  script.src = `https://openapi.map.naver.com/openapi/v3/maps.js?ncpClientId=${clientId}`;
-  script.onload = buildMap;
-  script.onerror = () => alert('지도 로드 실패. Client ID를 확인해주세요.');
-  document.head.appendChild(script);
+function makeInfoContent(p) {
+  var fields = [
+    ['주소', p.address], ['수영장 길이', p.pool_length], ['레인 수', p.lane_count],
+    ['수심', p.depth], ['이용 요금', p.price], ['평일 시간', p.weekday_hours],
+    ['주말 시간', p.weekend_hours], ['어린이풀', p.kids_pool], ['휴무', p.holiday],
+    ['실내/외', p.indoor_outdoor], ['수질 유형', p.water_type], ['홈페이지', p.homepage]
+  ];
+  var rows = fields
+    .filter(function(f) { return !!f[1]; })
+    .map(function(f) {
+      return '<div class="iw-row"><span class="iw-key">' + f[0] + '</span>'
+           + '<span class="iw-val">' + f[1] + '</span></div>';
+    }).join('');
+  return '<div class="iw-wrap"><div class="iw-title">&#127946; ' + p.pool_name + '</div>' + rows + '</div>';
 }
 
-function buildMap() {
-  document.getElementById('notice').style.display = 'none';
-  const mapDiv = document.getElementById('map');
-  mapDiv.style.display = 'block';
+/* 지도 초기화 */
+var map = new naver.maps.Map('map', {
+  center: new naver.maps.LatLng(37.582, 126.992),
+  zoom: 14,
+  zoomControl: true,
+  zoomControlOptions: { position: naver.maps.Position.TOP_RIGHT }
+});
 
-  map = new naver.maps.Map('map', {
-    center: new naver.maps.LatLng(37.582, 126.992),
-    zoom: 14
+var markers = {};
+var infoWindows = {};
+var currentKey = null;
+
+Object.keys(pools).forEach(function(key) {
+  var p = pools[key];
+
+  /* 마커 */
+  var marker = new naver.maps.Marker({
+    position: new naver.maps.LatLng(p.lat, p.lng),
+    map: map,
+    title: p.pool_name,
+    animation: naver.maps.Animation.DROP
   });
 
-  Object.entries(pools).forEach(([key, pool]) => {
-    const pos = new naver.maps.LatLng(pool.latitude, pool.longitude);
-
-    const markerIcon = {
-      content: `<div style="
-        background:#2E7CF6;color:#fff;font-size:12px;font-weight:700;
-        padding:5px 10px;border-radius:20px;white-space:nowrap;
-        box-shadow:0 2px 8px rgba(46,124,246,0.4);
-        border:2px solid #fff;
-      ">${pool.pool_name}</div>`,
-      anchor: new naver.maps.Point(0, -10)
-    };
-
-    const marker = new naver.maps.Marker({
-      position: pos,
-      map: map,
-      icon: markerIcon,
-      title: pool.pool_name
-    });
-
-    naver.maps.Event.addListener(marker, 'click', () => selectPool(key));
-    markers[key] = marker;
+  /* InfoWindow */
+  var iw = new naver.maps.InfoWindow({
+    content: makeInfoContent(p),
+    maxWidth: 300,
+    backgroundColor: '#fff',
+    borderColor: '#ccc',
+    borderWidth: 1,
+    anchorSize: new naver.maps.Size(10, 10),
+    anchorColor: '#fff',
+    pixelOffset: new naver.maps.Point(10, -10)
   });
-}
 
-function selectPool(key) {
-  if (!map) { alert('먼저 지도를 로드해주세요.'); return; }
+  naver.maps.Event.addListener(marker, 'click', function() {
+    focusPool(key);
+  });
 
-  document.querySelectorAll('.pool-btn').forEach(b => b.classList.remove('active'));
+  markers[key] = marker;
+  infoWindows[key] = iw;
+});
+
+function focusPool(key) {
+  var p = pools[key];
+
+  /* 버튼 active 처리 */
+  document.querySelectorAll('.pool-btn').forEach(function(btn) {
+    btn.classList.remove('active');
+  });
   document.getElementById('btn-' + key).classList.add('active');
 
-  const pool = pools[key];
-  const pos = new naver.maps.LatLng(pool.latitude, pool.longitude);
-  map.panTo(pos);
-  map.setZoom(16, true);
+  /* 이전 InfoWindow 닫기 */
+  if (currentKey && currentKey !== key) {
+    infoWindows[currentKey].close();
+  }
 
-  showInfo(key, pool);
-  currentActive = key;
-}
+  /* 지도 이동 */
+  map.setCenter(new naver.maps.LatLng(p.lat, p.lng));
+  map.setZoom(16);
 
-function showInfo(key, pool) {
-  const labels = {
-    address: '주소', pool_length: '수영장 길이', lane_count: '레인 수',
-    depth: '수심', price: '이용 요금', weekday_hours: '평일 시간',
-    weekend_hours: '주말 시간', kids_pool: '어린이풀', holiday: '휴무',
-    indoor_outdoor: '실내/외', water_type: '수질 유형', homepage: '홈페이지'
-  };
-
-  document.getElementById('infoTitle').textContent = pool.pool_name;
-  const grid = document.getElementById('infoGrid');
-  grid.innerHTML = '';
-
-  Object.entries(labels).forEach(([field, label]) => {
-    if (pool[field]) {
-      const k = document.createElement('span');
-      k.className = 'k';
-      k.textContent = label;
-      const v = document.createElement('span');
-      v.className = 'v';
-      v.textContent = pool[field];
-      grid.appendChild(k);
-      grid.appendChild(v);
-    }
-  });
-
-  document.getElementById('infoOverlay').classList.add('show');
-}
-
-function closeInfo() {
-  document.getElementById('infoOverlay').classList.remove('show');
-  if (currentActive) {
-    document.getElementById('btn-' + currentActive).classList.remove('active');
-    currentActive = null;
+  /* InfoWindow 토글 */
+  if (currentKey === key && infoWindows[key].getMap()) {
+    infoWindows[key].close();
+    currentKey = null;
+    document.getElementById('btn-' + key).classList.remove('active');
+  } else {
+    infoWindows[key].open(map, markers[key]);
+    currentKey = key;
   }
 }
+
+/* 인증 실패 시 안내 */
+window.navermap_authFailure = function() {
+  document.getElementById('map').innerHTML =
+    '<div style="display:flex;align-items:center;justify-content:center;height:100%;flex-direction:column;gap:12px;color:#c00;font-size:14px;">'
+    + '<strong>⚠️ 네이버 지도 API 인증 실패</strong>'
+    + '<p>pool_map.html 파일을 텍스트 편집기로 열어<br>'
+    + '<code>YOUR_CLIENT_KEY</code> 부분을 발급받은 <b>ncpKeyId</b>로 교체해주세요.</p>'
+    + '</div>';
+};
 </script>
 </body>
 </html>
