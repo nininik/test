@@ -5,17 +5,76 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no">
   <title>종로구 수영장 지도</title>
 
-  <!-- ✅ 네이버 지도 API v3 (최신: oapi 도메인 + ncpKeyId 파라미터) -->
+  <!-- 네이버 지도 API v3 -->
   <script type="text/javascript" src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=tg6az681o1"></script>
+
+  <!-- Firebase SDK -->
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+    import { getAuth, signInWithCustomToken, signOut, onAuthStateChanged }
+      from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+
+    // ↓ Firebase 콘솔 > 프로젝트 설정 > 웹 앱 > firebaseConfig 값으로 교체
+    const firebaseConfig = {
+      apiKey:            "AIzaSyCwwIuk-oYl9T0Xo-uH0KqWdyIpWGLlRJQ",
+      authDomain:        "YOUR_PROJECT_ID.firebaseapp.com",
+      projectId:         "hiddentest-8f017",
+      storageBucket:     "YOUR_PROJECT_ID.appspot.com",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId:             "1:804914223614:web:bd1214f66495eff30988af"
+    };
+
+    const app  = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    // URL 파라미터에서 커스텀 토큰 수신 후 Firebase 로그인
+    const params = new URLSearchParams(window.location.search);
+    const customToken = params.get('token');
+
+    if (customToken) {
+      signInWithCustomToken(auth, customToken)
+        .then(() => {
+          // 토큰·닉네임·사진을 URL에서 제거
+          history.replaceState(null, '', '/');
+        })
+        .catch(err => console.error('Firebase 로그인 실패:', err));
+    }
+
+    // 로그인 상태 변화 감지 → UI 업데이트
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        const nickname = params.get('nickname') || user.displayName || '사용자';
+        const photo    = params.get('photo')    || user.photoURL;
+        window._firebaseUser = user; // 로그아웃에서 참조
+        updateLoginUI({ loggedIn: true, user: { nickname, thumbnail: photo } });
+        if (params.get('login') === 'success') showToast('✅  카카오 로그인 성공!');
+      } else {
+        window._firebaseUser = null;
+        updateLoginUI({ loggedIn: false });
+      }
+    });
+
+    // 로그아웃 버튼 핸들러
+    window.logout = async function () {
+      const user = window._firebaseUser;
+      if (user) {
+        // 카카오 서버 측 토큰도 무효화 (accessToken은 서버에서만 보관 → 간단히 Firebase만 처리)
+        await signOut(auth);
+      }
+      window.location.href = '/';
+    };
+  </script>
 
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { height: 100%; font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; }
 
+    /* ── 상단 헤더 바 ─────────────────────────── */
     #top-bar {
       display: flex;
+      align-items: center;
       gap: 10px;
-      padding: 12px 16px;
+      padding: 10px 16px;
       background: #fff;
       border-bottom: 1px solid #e0e0e0;
       box-shadow: 0 2px 6px rgba(0,0,0,0.08);
@@ -24,6 +83,7 @@
       flex-wrap: wrap;
     }
 
+    /* ── 수영장 버튼 ──────────────────────────── */
     .pool-btn {
       display: flex;
       flex-direction: column;
@@ -39,22 +99,21 @@
     }
     .pool-btn:hover { border-color: #1EC800; background: #f3fff0; }
     .pool-btn.active { border-color: #1EC800; background: #1EC800; }
-    .pool-btn .tag {
-      font-size: 10px; font-weight: 700; letter-spacing: 0.08em; color: #888; margin-bottom: 3px;
-    }
-    .pool-btn.active .tag { color: rgba(255,255,255,0.8); }
+    .pool-btn .tag  { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; color: #888; margin-bottom: 3px; }
+    .pool-btn.active .tag  { color: rgba(255,255,255,0.8); }
     .pool-btn .name { font-size: 13px; font-weight: 700; color: #1a1a1a; line-height: 1.3; }
     .pool-btn.active .name { color: #fff; }
     .pool-btn .addr { font-size: 11px; color: #888; margin-top: 2px; }
     .pool-btn.active .addr { color: rgba(255,255,255,0.75); }
 
-    #map { width: 100%; height: calc(100vh - 80px); }
+    /* ── 지도 ─────────────────────────────────── */
+    #map { width: 100%; height: calc(100vh - 82px); }
 
-.iw-wrap {
-  padding: 8px 12px;
-  /* min-width: 230px; <- 이 줄을 삭제하거나 주석 처리하세요 */
-  font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
-}
+    /* ── 인포윈도우 ───────────────────────────── */
+    .iw-wrap {
+      padding: 8px 12px;
+      font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+    }
     .iw-title {
       font-size: 14px; font-weight: 700; color: #111;
       margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #eee;
@@ -62,11 +121,96 @@
     .iw-row { display: flex; gap: 8px; margin-bottom: 5px; font-size: 12px; line-height: 1.5; }
     .iw-key { color: #888; min-width: 62px; flex-shrink: 0; }
     .iw-val { color: #222; font-weight: 500; }
+
+    /* ── 카카오 로그인 영역 ───────────────────── */
+    #login-area {
+      margin-left: auto;          /* 오른쪽 끝으로 밀기 */
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    /* 로그인 전: 카카오 버튼 */
+    #kakao-login-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 18px;
+      background: #FEE500;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 700;
+      color: #191919;
+      text-decoration: none;
+      transition: background 0.15s;
+      white-space: nowrap;
+    }
+    #kakao-login-btn:hover { background: #F5DC00; }
+    #kakao-login-btn svg { flex-shrink: 0; }
+
+    /* 로그인 후: 프로필 */
+    #user-profile {
+      display: none;
+      align-items: center;
+      gap: 10px;
+    }
+    #user-profile.visible { display: flex; }
+
+    #user-avatar {
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid #FEE500;
+    }
+    #user-avatar-placeholder {
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      background: #FEE500;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+    }
+    #user-nickname {
+      font-size: 13px; font-weight: 700; color: #1a1a1a;
+      max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+
+    #logout-btn {
+      padding: 7px 13px;
+      border: 1.5px solid #e0e0e0;
+      border-radius: 8px;
+      background: #fff;
+      cursor: pointer;
+      font-size: 12px;
+      color: #666;
+      transition: all 0.15s;
+    }
+    #logout-btn:hover { border-color: #ff5c5c; color: #ff5c5c; }
+
+    /* ── 로그인 성공 토스트 ──────────────────── */
+    #toast {
+      position: fixed;
+      bottom: 28px; left: 50%; transform: translateX(-50%) translateY(20px);
+      background: rgba(30,200,0,0.92);
+      color: #fff;
+      padding: 11px 22px;
+      border-radius: 24px;
+      font-size: 13px; font-weight: 600;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.35s ease;
+      z-index: 9999;
+      white-space: nowrap;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
   </style>
 </head>
 <body>
 
   <div id="top-bar">
+    <!-- 수영장 선택 버튼 -->
     <button class="pool-btn" id="btn-Gov_001" onclick="focusPool('Gov_001')">
       <span class="tag">GOV_001</span>
       <span class="name">종로 올림픽기념국민생활관</span>
@@ -82,11 +226,38 @@
       <span class="name">종로문화체육센터</span>
       <span class="addr">인왕산로1길 21</span>
     </button>
+
+    <!-- 카카오 로그인 영역 (오른쪽 끝) -->
+    <div id="login-area">
+
+      <!-- 로그인 전 -->
+      <a id="kakao-login-btn" href="/auth/kakao">
+        <!-- 카카오 말풍선 아이콘 -->
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path fill-rule="evenodd" clip-rule="evenodd"
+            d="M9 1C4.582 1 1 3.895 1 7.5c0 2.34 1.452 4.394 3.637 5.57L3.76 16.14a.25.25 0 0 0 .37.284L8.11 13.96c.294.027.594.04.89.04 4.418 0 8-2.895 8-6.5S13.418 1 9 1z"
+            fill="#191919"/>
+        </svg>
+        카카오로 시작하기
+      </a>
+
+      <!-- 로그인 후 프로필 -->
+      <div id="user-profile">
+        <img id="user-avatar" src="" alt="프로필" onerror="this.style.display='none'; document.getElementById('user-avatar-placeholder').style.display='flex';">
+        <div id="user-avatar-placeholder" style="display:none;">🏊</div>
+        <span id="user-nickname"></span>
+        <button id="logout-btn" onclick="logout()">로그아웃</button>
+      </div>
+    </div>
   </div>
 
   <div id="map"></div>
+  <div id="toast"></div>
 
 <script>
+/* ══════════════════════════════════════════════
+   수영장 데이터
+══════════════════════════════════════════════ */
 var pools = {
   Gov_001: {
     pool_name: '종로 올림픽기념국민생활관',
@@ -122,14 +293,18 @@ var pools = {
   }
 };
 
+/* ══════════════════════════════════════════════
+   인포윈도우 콘텐츠
+══════════════════════════════════════════════ */
 function makeInfoContent(p) {
-  // 다른 정보 없이 수영장 이름만 담은 심플한 HTML 반환
-  return '<div class="iw-wrap" style="padding:10px; font-weight:bold; font-size:14px;">' 
-         + '🏊 ' + p.pool_name 
-         + '</div>';
+  return '<div class="iw-wrap" style="padding:10px; font-weight:bold; font-size:14px;">'
+       + '🏊 ' + p.pool_name
+       + '</div>';
 }
 
-/* 지도 초기화 */
+/* ══════════════════════════════════════════════
+   네이버 지도 초기화
+══════════════════════════════════════════════ */
 var map = new naver.maps.Map('map', {
   center: new naver.maps.LatLng(37.582, 126.992),
   zoom: 14,
@@ -137,14 +312,11 @@ var map = new naver.maps.Map('map', {
   zoomControlOptions: { position: naver.maps.Position.TOP_RIGHT }
 });
 
-var markers = {};
-var infoWindows = {};
-var currentKey = null;
+var markers = {}, infoWindows = {}, currentKey = null;
 
 Object.keys(pools).forEach(function(key) {
   var p = pools[key];
 
-  /* 마커 */
   var marker = new naver.maps.Marker({
     position: new naver.maps.LatLng(p.lat, p.lng),
     map: map,
@@ -152,7 +324,6 @@ Object.keys(pools).forEach(function(key) {
     animation: naver.maps.Animation.DROP
   });
 
-  /* InfoWindow */
   var iw = new naver.maps.InfoWindow({
     content: makeInfoContent(p),
     maxWidth: 300,
@@ -164,33 +335,21 @@ Object.keys(pools).forEach(function(key) {
     pixelOffset: new naver.maps.Point(10, -10)
   });
 
-  naver.maps.Event.addListener(marker, 'click', function() {
-    focusPool(key);
-  });
-
+  naver.maps.Event.addListener(marker, 'click', function() { focusPool(key); });
   markers[key] = marker;
   infoWindows[key] = iw;
 });
 
 function focusPool(key) {
   var p = pools[key];
-
-  /* 버튼 active 처리 */
-  document.querySelectorAll('.pool-btn').forEach(function(btn) {
-    btn.classList.remove('active');
-  });
+  document.querySelectorAll('.pool-btn').forEach(function(btn) { btn.classList.remove('active'); });
   document.getElementById('btn-' + key).classList.add('active');
 
-  /* 이전 InfoWindow 닫기 */
-  if (currentKey && currentKey !== key) {
-    infoWindows[currentKey].close();
-  }
+  if (currentKey && currentKey !== key) infoWindows[currentKey].close();
 
-  /* 지도 이동 */
   map.setCenter(new naver.maps.LatLng(p.lat, p.lng));
   map.setZoom(16);
 
-  /* InfoWindow 토글 */
   if (currentKey === key && infoWindows[key].getMap()) {
     infoWindows[key].close();
     currentKey = null;
@@ -201,13 +360,55 @@ function focusPool(key) {
   }
 }
 
-/* 인증 실패 시 안내 */
+/* ══════════════════════════════════════════════
+   카카오 로그인 상태 확인 & UI 업데이트
+══════════════════════════════════════════════ */
+function updateLoginUI(data) {
+  var loginBtn  = document.getElementById('kakao-login-btn');
+  var profile   = document.getElementById('user-profile');
+  var avatar    = document.getElementById('user-avatar');
+  var nickname  = document.getElementById('user-nickname');
+
+  if (data.loggedIn) {
+    loginBtn.style.display = 'none';
+    profile.classList.add('visible');
+    nickname.textContent = data.user.nickname;
+    if (data.user.thumbnail) {
+      avatar.src = data.user.thumbnail;
+      avatar.style.display = 'block';
+    }
+  } else {
+    loginBtn.style.display = 'flex';
+    profile.classList.remove('visible');
+  }
+}
+
+// logout() 은 Firebase 모듈 스크립트에서 window.logout 으로 정의됨
+
+/* ── 토스트 헬퍼 (Firebase 모듈에서 호출) ─────── */
+function showToast(msg, color) {
+  var toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.style.background = color || 'rgba(30,200,0,0.92)';
+  toast.classList.add('show');
+  setTimeout(function() { toast.classList.remove('show'); }, 3000);
+}
+
+/* ── 로그인 실패 처리 ──────────────────────────── */
+(function() {
+  var params = new URLSearchParams(window.location.search);
+  if (params.get('login') === 'fail') {
+    showToast('⚠️  로그인에 실패했습니다.', 'rgba(220,50,50,0.92)');
+    history.replaceState(null, '', '/');
+  }
+})();
+
+/* ── 네이버 지도 인증 실패 핸들러 ─────────────── */
 window.navermap_authFailure = function() {
   document.getElementById('map').innerHTML =
     '<div style="display:flex;align-items:center;justify-content:center;height:100%;flex-direction:column;gap:12px;color:#c00;font-size:14px;">'
     + '<strong>⚠️ 네이버 지도 API 인증 실패</strong>'
-    + '<p>pool_map.html 파일을 텍스트 편집기로 열어<br>'
-    + '<code>YOUR_CLIENT_KEY</code> 부분을 발급받은 <b>ncpKeyId</b>로 교체해주세요.</p>'
+    + '<p>ncpKeyId를 발급받은 키로 교체해주세요.</p>'
     + '</div>';
 };
 </script>
