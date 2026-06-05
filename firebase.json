@@ -1,0 +1,16 @@
+{
+  "hosting": {
+    "public": "public",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "rewrites": [
+      { "source": "/auth/kakao",          "function": "kakaoAuth"     },
+      { "source": "/auth/kakao/callback", "function": "kakaoCallback" },
+      { "source": "/auth/logout",         "function": "kakaoLogout"   },
+      { "source": "**",                   "destination": "/index.html" }
+    ]
+  },
+  "functions": {
+    "source": "functions",
+    "runtime": "nodejs20"
+  }
+}
