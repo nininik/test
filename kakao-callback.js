@@ -14,7 +14,7 @@
  */
 
 (function () {
-  const MUGAEMAP_ORIGIN = '*'; // 물개맵 도메인이 확정되면 해당 URL로 교체 권장
+  const MUGAEMAP_ORIGIN = 'https://mulgaemap.com'; // 물개맵 도메인이 확정되면 해당 URL로 교체 권장
   // 예: const MUGAEMAP_ORIGIN = 'https://mugaemap.web.app';
 
   const params   = new URLSearchParams(location.search);
